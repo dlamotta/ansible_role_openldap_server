@@ -7,6 +7,7 @@ openldap_server_domain_name: example.com
 openldap_server_rootpw: passme
 
 #The self signed ssl parameters
+openldap_server_common_name: "{{ ansible_hostname }}"
 openldap_server_country: US
 openldap_server_state: oregon
 openldap_server_location: portland
