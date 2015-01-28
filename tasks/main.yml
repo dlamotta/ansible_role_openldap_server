@@ -1,3 +1,11 @@
 ---
 - include: install_ldap.yml
 - include: configure_ldap.yml
+
+- name: Ensure firewall ports are Open
+  firewalld:
+    service: "{{ item }}"
+    permanent: true
+    state: enabled
+  with_items:
+    - ldaps
