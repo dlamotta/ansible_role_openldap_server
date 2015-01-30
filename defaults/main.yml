@@ -10,8 +10,8 @@ openldap_server_common_name: "{{ ansible_hostname }}"
 openldap_server_country: US
 openldap_server_state: oregon
 openldap_server_location: portland
-openldap_server_organization: IT
-
+openldap_server_organization: ACME PTY LTD
+openldap_server_organizational_unit: IT
 openldap_server_enable_ssl: true
 
 #The ldif file
