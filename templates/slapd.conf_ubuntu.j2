@@ -25,7 +25,13 @@ access to attrs=shadowLastChange
                 by self write
                 by * read
 
+{% if 'mdb' in slapd_capabilities.stderr %}
+moduleload      back_mdb.la
+database        mdb
+{% else %}
+moduleload      back_bdb.la
 database        bdb
+{% endif %}
 suffix          "{{domain_component}}"
 rootdn          "cn=Manager,{{domain_component}}"
 rootpw          {{ root_password.stdout }}

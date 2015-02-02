@@ -6,21 +6,27 @@
 - name: Create the directory for ldap certificates
   file: path={{ openldap_server_app_path }}/certs/ state=directory owner={{ openldap_server_user }} group={{ openldap_server_user }}
 
+- name: Generate the DHE parameter
+  command: openssl dhparam 2048 -out dh2048.pem
+  args:
+    creates: "{{ openldap_server_app_path }}/certs/dh2048.pem"
+    chdir: "{{ openldap_server_app_path }}/certs/"
+
 - name: Generate the private key for certificate request
-  shell: >
+  command: >
       openssl genpkey -algorithm RSA -out my1.key -aes-128-cbc -pkeyopt rsa_keygen_bits:2048  -pass pass:password
   args:
     creates: "{{ openldap_server_app_path }}/certs/my1.key"
     chdir: "{{ openldap_server_app_path }}/certs/"
 
 - name: Strip the passphrase from the key
-  shell: openssl rsa -in my1.key -passin pass:password -out my.key
+  command: openssl rsa -in my1.key -passin pass:password -out my.key
   args:
     chdir: "{{ openldap_server_app_path }}/certs/"
     creates: "{{ openldap_server_app_path }}/certs/my.key"
 
 - name: Create and sign the the new certificate
-  shell: openssl req -new -x509 -subj '/C={{ openldap_server_country }}/ST={{ openldap_server_state }}/L={{ openldap_server_location }}/O={{ openldap_server_organization }}/OU={{ openldap_server_organizational_unit }} /CN={{ openldap_server_common_name }}/' -days 3650 -key my.key -out cert.crt -extensions v3_ca
+  command: "openssl req -new -x509 -subj '/C={{ openldap_server_country }}/ST={{ openldap_server_state }}/L={{ openldap_server_location }}/O={{ openldap_server_organization }}/OU={{ openldap_server_organizational_unit }} /CN={{ openldap_server_common_name }}/' -days 3650 -key my.key -out cert.crt -extensions v3_ca"
   args:
     chdir: "{{ openldap_server_app_path }}/certs/"
     creates: "{{ openldap_server_app_path }}/certs/cert.crt"
@@ -51,4 +57,6 @@
   register: result
 
 - name: add the base domain
-  shell: ldapadd -x -D "cn=Manager,{{ domain_component }}" -w {{ openldap_server_rootpw }} -f {{ result.dest }} && touch {{ openldap_server_app_path }}/rootdn_created creates={{ openldap_server_app_path }}/rootdn_created
+  shell: "ldapadd -x -D \"cn=Manager,{{ domain_component }}\" -w {{ openldap_server_rootpw }} -f {{ result.dest }} && touch {{ openldap_server_app_path }}/rootdn_created "
+  args:
+    creates: "{{ openldap_server_app_path }}/rootdn_created"
