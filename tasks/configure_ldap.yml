@@ -53,10 +53,47 @@
   service: name=slapd state=started enabled=yes
 
 - name: Copy the template for creating base dn
-  template: src={{ openldap_server_ldif }} dest=/tmp
-  register: result
+  template: src={{ item }} dest=/tmp
+  register: output
+  with_items:
+    - mdb.ldif
+    - "{{ openldap_server_ldif }}"
+    - info.ldif
+
+- debug: 
+    msg: "{{ output }}"
 
 - name: add the base domain
-  shell: "ldapadd -x -D \"cn=Manager,{{ domain_component }}\" -w {{ openldap_server_rootpw }} -f {{ result.dest }} && touch {{ openldap_server_app_path }}/rootdn_created "
+  shell: "ldapadd -Y EXTERNAL -H ldapi:/// -f {{ item.dest }}"
+  # when: hdb_db_deleted.changed
+  with_items:
+    - "{{output.results}}"
+  # when: item.changed
+  register: rootdn_created
+
+
+
+- name: gather list of schemas
+  command: "ldapsearch -Y EXTERNAL -H ldapi:/// -b cn=schema,cn=config cn"
+  changed_when: openldap_schemas.rc != 0
+  register: openldap_schemas
+
+- name: add additional schemas
+  command: "ldapadd -Y EXTERNAL -H ldapi:/// -f {{item}}.ldif"
   args:
-    creates: "{{ openldap_server_app_path }}/rootdn_created"
+    chdir: "{{ openldap_server_app_path }}/schema/"
+  when: "'{{item}}' not in openldap_schemas.stdout"
+  with_items:
+    - "corba"
+    - "cosine"
+    - "duaconf"
+    - "dyngroup"
+    - "inetorgperson"
+    - "java"
+    - "misc"
+    - "rfc2307bis"
+    - "openldap"
+    - "ppolicy"
+    - "collective"
+  notify:
+    - restart slapd

@@ -15,30 +15,45 @@
   environment: env
   when: ansible_os_family == 'Debian'
 
-# - name: Delete the configuration directory
-#   file: path={{ openldap_server_app_path }}/slapd.d state=absent
+- name: Fix the frontend cn config
+  copy:
+    src: "slapd.d/cn=config/olcDatabase={-1}frontend.ldif"
+    dest: "{{ openldap_server_app_path }}/slapd.d/cn=config/olcDatabase={-1}frontend.ldif"
+
+- name: Delete the HDB config
+  file:
+    path: "{{ openldap_server_app_path }}/slapd.d/cn=config/olcDatabase={2}hdb.ldif"
+    state: absent
+  register: hdb_db_deleted
 
 - name: Generate the root password for ldap
   shell: slappasswd -s {{ openldap_server_rootpw }}
+  changed_when: root_password.rc != 0
   register: root_password
 
 - name: Register slapd statically compiled overlays and backends
   command: slapd -VVV
   ignore_errors: true #slapd -VVV always returns 1 as the return code.
+  changed_when: false
   register: slapd_capabilities
 
-- name: Copy the slapd.conf configuration file for Redhat
-  template: "src=slapd.conf.j2 dest={{ openldap_server_app_path }}/slapd.conf"
-  when: ansible_os_family == "RedHat"
-  notify:
-   - restart slapd
+# - name: Copy the slapd.conf configuration file for Redhat
+#   template: "src=slapd.conf.j2 dest={{ openldap_server_app_path }}/slapd.conf"
+#   when: ansible_os_family == "RedHat"
+#   notify:
+#    - restart slapd
 
-- name: Copy the slapd.conf configuration file
-  template: "src=slapd.conf_ubuntu.j2 dest={{ openldap_server_app_path }}/slapd.conf"
-  when: ansible_os_family == "Debian"
-  notify:
-   - restart slapd
+# - name: Copy the slapd.conf configuration file
+#   template: "src=slapd.conf_ubuntu.j2 dest={{ openldap_server_app_path }}/slapd.conf"
+#   when: ansible_os_family == "Debian"
+#   notify:
+#    - restart slapd
 
 - name: Copy the ldap.conf configuration file
   template: src=ldap.conf.j2 dest={{ openldap_server_app_path }}/ldap.conf
 
+- name: Copy the rfc2307bis ldif.
+  copy:
+    src: schema/rfc2307bis.ldif
+    dest: "{{ openldap_server_app_path }}/schema/"
+    mode: 0644

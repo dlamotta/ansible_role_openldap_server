@@ -9,3 +9,6 @@
     state: enabled
   with_items:
     - ldaps
+    - ldap
+  notify:
+    - restart firewalld

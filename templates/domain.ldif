@@ -1,4 +1,14 @@
-dn: {{ domain_component }}
-objectClass: domain
+dn: {{ domain_component}}
 dc: {{ openldap_server_domain_name.split('.')[0] }}
+objectClass: top
+objectClass: domain
 
+dn: ou=People,{{ domain_component}}
+ou: People
+objectClass: top
+objectClass: organizationalUnit
+
+dn: ou=Group,{{ domain_component}}
+ou: Group
+objectClass: top
+objectClass: organizationalUnit
