@@ -4,23 +4,24 @@ changetype: modify
 replace: olcTLSCACertificatePath
 olcTLSCACertificatePath: {{openldap_server_app_path}}/certs/
 -
+replace: olcTLSCACertificateFile
+olcTLSCACertificateFile: {{openldap_server_app_path}}/certs/cacert.crt
+-
 replace: olcTLSCertificateFile
-olcTLSCertificateFile: {{openldap_server_app_path}}/certs/cert.crt
+olcTLSCertificateFile: {{openldap_server_app_path}}/certs/ldap.crt
 -
 replace: olcTLSCertificateKeyFile
-olcTLSCertificateKeyFile: {{openldap_server_app_path}}/certs/my.key
+olcTLSCertificateKeyFile: {{openldap_server_app_path}}/certs/ldap.key
 -
 replace: olcTLSDHParamFile
-olcTLSDHParamFile: {{openldap_server_app_path}}/certs/dh2048.pem
--
-replace: olcTLSCipherSuite
-olcTLSCipherSuite: SECURE128:+SECURE192:-VERS-TLS-ALL:+VERS-TLS1.2
+olcTLSDHParamFile: /dev/null
 -
 replace: olcPasswordHash
 olcPasswordHash: {CRYPT}
 -
 replace: olcPasswordCryptSaltFormat
 olcPasswordCryptSaltFormat: "$6$%.12s"
+
 
 # Adding a rootDN for the config.
 # Note that this isn't fully necessary as you can use -Y EXTERNAL -H ldapi:/// instead
@@ -37,6 +38,15 @@ olcRootPW: {{ root_password.stdout }}
 dn: olcDatabase={1}monitor,cn=config
 changetype: modify
 replace: olcAccess
-olcAccess: {0}to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" read by dn.base="cn=Manager,{{ domain_component }}" read by * none
+olcAccess: {0}to *
+  by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" read
+  by dn.base="cn=Manager,{{ domain_component }}" read
+  by * none
 
-
+dn: olcDatabase={2}mdb,cn=config
+changetype: modify
+replace: olcAccess
+olcAccess: {0}to *
+  by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" manage
+  by dn.base="cn=Manager,{{ domain_component }}" write
+  by * none

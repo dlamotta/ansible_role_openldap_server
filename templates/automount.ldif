@@ -1,0 +1,21 @@
+dn: automountMapName=auto.master,{{ domain_com}}
+objectClass: automountMap
+automountMapName: auto.master
+description: Default Container
+
+dn: automountKey=/lhome,automountMapName=auto.master,{{ domain_com}}
+objectClass: automount
+automountInformation: ldap:10.100.1.140:automountMapName=auto.lhome,{{ domain_com}}
+automountKey: /lhome
+description: Home mount reference
+
+dn: automountMapName=auto.lhome,{{ domain_com}}
+objectClass: automountMap
+automountMapName: auto.lhome
+description: Home
+
+dn: automountKey=/,automountMapName=auto.lhome,{{ domain_com}}
+objectClass: automount
+automountInformation: -rw,soft,intr 10.100.1.140:/lhome/&
+automountKey: /
+description: Mount information

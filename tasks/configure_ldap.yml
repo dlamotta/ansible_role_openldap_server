@@ -12,24 +12,65 @@
     creates: "{{ openldap_server_app_path }}/certs/dh2048.pem"
     chdir: "{{ openldap_server_app_path }}/certs/"
 
-- name: Generate the private key for certificate request
-  command: >
-      openssl genpkey -algorithm RSA -out my1.key -aes-128-cbc -pkeyopt rsa_keygen_bits:2048  -pass pass:password
+- name: Generate the DSA parameter
+  command: "openssl genpkey -genparam -algorithm dsa -pkeyopt dsa_paramgen_bits:2048 -out dsa2048.pem"
   args:
-    creates: "{{ openldap_server_app_path }}/certs/my1.key"
+    creates: "{{ openldap_server_app_path }}/certs/dsa2048.pem"
     chdir: "{{ openldap_server_app_path }}/certs/"
 
-- name: Strip the passphrase from the key
-  command: openssl rsa -in my1.key -passin pass:password -out my.key
+- name: Generate the private key for certificate request
+  command: "openssl genpkey -out rootCA.key.secure  -aes-128-cbc -paramfile dsa2048.pem -pass pass:rootpassword"
+  args:
+    creates: "{{ openldap_server_app_path }}/certs/rootCA.key.secure"
+    chdir: "{{ openldap_server_app_path }}/certs/"
+
+- name: Strip the passphrase from the CA key
+  command: openssl dsa -in rootCA.key.secure -passin pass:rootpassword -out rootCA.key
   args:
     chdir: "{{ openldap_server_app_path }}/certs/"
-    creates: "{{ openldap_server_app_path }}/certs/my.key"
+    creates: "{{ openldap_server_app_path }}/certs/rootCA.key"
 
 - name: Create and sign the the new certificate
-  command: "openssl req -new -x509 -subj '/C={{ openldap_server_country }}/ST={{ openldap_server_state }}/L={{ openldap_server_location }}/O={{ openldap_server_organization }}/OU={{ openldap_server_organizational_unit }} /CN={{ openldap_server_common_name }}/' -days 3650 -key my.key -out cert.crt -extensions v3_ca"
+  command: >
+      openssl req -new -x509 -subj '/C={{ openldap_server_country }}/ST={{ openldap_server_state }}/L={{ openldap_server_location }}/O={{ openldap_server_organization }}/OU={{ openldap_server_organizational_unit }}' \
+      -sha256 -passin pass:rootpassword \
+      -days 3650 \
+      -key rootCA.key \
+      -out cacert.crt \
+      -extensions v3_ca
   args:
     chdir: "{{ openldap_server_app_path }}/certs/"
-    creates: "{{ openldap_server_app_path }}/certs/cert.crt"
+    creates: "{{ openldap_server_app_path }}/certs/cacert.crt"
+
+- name: Generate the private key for certificate request
+  command: "openssl genpkey -out ldap.key.secure -paramfile dsa2048.pem -aes-128-cbc -pass pass:ldappassword"
+  args:
+    creates: "{{ openldap_server_app_path }}/certs/ldap.key.secure"
+    chdir: "{{ openldap_server_app_path }}/certs/"
+
+- name: Strip the passphrase from the CA key
+  command: openssl dsa -in ldap.key.secure -passin pass:ldappassword -out ldap.key
+  args:
+    chdir: "{{ openldap_server_app_path }}/certs/"
+    creates: "{{ openldap_server_app_path }}/certs/ldap.key"
+
+- name: Create a CSR
+  command: "openssl req -new -key ldap.key -out ldap.csr -subj '/C={{ openldap_server_country }}/ST={{ openldap_server_state }}/L={{ openldap_server_location }}/O={{ openldap_server_organization }}/OU={{ openldap_server_organizational_unit }} /CN={{ openldap_server_common_name }}/'"
+  args:
+    chdir: "{{ openldap_server_app_path }}/certs/"
+    creates: "{{ openldap_server_app_path }}/certs/ldap.csr"
+
+- name: and sign the the new certificate...
+  command: >
+      openssl x509 -req -in ldap.csr
+      -CA cacert.crt -CAkey rootCA.key -CAcreateserial \
+      -sha256 \
+      -days 3650 \
+      -out ldap.crt \
+      -extensions v3_ca
+  args:
+    chdir: "{{ openldap_server_app_path }}/certs/"
+    creates: "{{ openldap_server_app_path }}/certs/ldap.crt"
 
 - name: copy the supporting files
   copy: src=ldap dest=/etc/sysconfig/ldap mode=0755
@@ -51,27 +92,6 @@
 
 - name: start the slapd service
   service: name=slapd state=started enabled=yes
-
-- name: Copy the template for creating base dn
-  template: src={{ item }} dest=/tmp
-  register: output
-  with_items:
-    - mdb.ldif
-    - "{{ openldap_server_ldif }}"
-    - info.ldif
-
-- debug: 
-    msg: "{{ output }}"
-
-- name: add the base domain
-  shell: "ldapadd -Y EXTERNAL -H ldapi:/// -f {{ item.dest }}"
-  # when: hdb_db_deleted.changed
-  with_items:
-    - "{{output.results}}"
-  # when: item.changed
-  register: rootdn_created
-
-
 
 - name: gather list of schemas
   command: "ldapsearch -Y EXTERNAL -H ldapi:/// -b cn=schema,cn=config cn"
@@ -97,3 +117,28 @@
     - "collective"
   notify:
     - restart slapd
+
+- name: Copy the template for creating base dn
+  template: src={{ item }} dest=/tmp
+  register: output
+  with_items:
+    - modules.ldif
+    - mdb.ldif
+    - "{{ openldap_server_ldif }}"
+    - info.ldif
+    - memberof.ldif
+
+- debug:
+    msg: "{{ output }}"
+
+- name: add the base domain
+  shell: "ldapadd -Y EXTERNAL -H ldapi:/// -f {{ item.dest }}"
+  # when: hdb_db_deleted.changed
+  with_items:
+    - "{{output.results}}"
+  # when: item.changed
+  changed_when:
+  register: rootdn_created
+
+
+

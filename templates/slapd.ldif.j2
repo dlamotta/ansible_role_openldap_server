@@ -119,18 +119,19 @@ olcDatabase: frontend
 dn: olcDatabase=config,cn=config
 objectClass: olcDatabaseConfig
 olcDatabase: config
-olcAccess: to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,c
- n=auth" manage by * none
-
-#
-# Server status monitoring
-#
+olcAccess: to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external, cn=auth" manage by * none
 
 dn: olcDatabase=monitor,cn=config
 objectClass: olcDatabaseConfig
 olcDatabase: monitor
 olcAccess: to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,c
  n=auth" read by dn.base="cn=Manager,{{ domain_component}}" read by * none
+
+
+#
+# Server status monitoring
+#
+
 
 #
 # Backend database definitions
@@ -140,6 +141,7 @@ dn: olcDatabase=mdb,cn=config
 objectClass: olcDatabaseConfig
 objectClass: olcmMbConfig
 olcDatabase: mdb
+
 olcSuffix: {{ domain_component}}
 olcRootDN: cn=Manager,{{ domain_component}}
 olcRootPW: {SSHA}CuaKctEx7rl/+ldG0EjktMzJdrxNc46+
@@ -149,3 +151,8 @@ olcLastMod: TRUE
 olcDbEnvFlags: nometasync
 olcDbEnvFlags: writemap
 olcDbDirectory:	/var/lib/ldap
+
+replace: olcAccess
+olcAccess: {0}to *
+  by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth" write
+  by * none
