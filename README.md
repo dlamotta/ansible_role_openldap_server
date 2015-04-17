@@ -19,6 +19,7 @@ them are as follows:
     openldap_serverdomain_name: example.com    # The domain prefix for ldap
     openldap_serverrootpw: passme              # This is the password for admin for openldap
     openldap_serverenable_ssl: true            # To enable/disable ssl for the ldap
+    openldap_server_common_name: server.example.com # Defaults to {{ ansible_hostname}}
     openldap_servercountry: US                 # The self signed ssl certificate parameters
     openldap_serverstate: Oregon
     openldap_serverlocation: Portland
@@ -36,7 +37,7 @@ Examples
         openldap_server_domain_name: example.com
         openldap_server_rootpw: passme
         openldap_server_enable_ssl: false
-       
+
 2) Configure an OpenLDAP server with SSL:
 
     - hosts: all
@@ -45,6 +46,7 @@ Examples
         openldap_server_domain_name: example.com
         openldap_server_rootpw: passme
         openldap_server_enable_ssl: true
+        openldap_server_common_name: server.example.com
         openldap_server_country: US
         openldap_server_state: Oregon
         openldap_server_location: Portland
